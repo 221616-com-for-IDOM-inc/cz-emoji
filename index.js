@@ -7,6 +7,7 @@ const pad = require('pad')
 const path = require('path')
 const fuse = require('fuse.js')
 const util = require('util')
+const execSync = require('child_process').execSync;
 
 const types = require('./lib/types')
 
@@ -167,12 +168,13 @@ function formatCommitMessage(answers, config) {
   const type = config.types.find(type => type.code === emoji.emoji).name
   const scope = answers.scope ? '(' + answers.scope.trim() + ')' : ''
   const subject = answers.subject.trim()
+  const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' });
 
   const commitMessage = config.format
     .replace(/{emoji}/g, emoji.emoji)
     .replace(/{type}/g, type)
     .replace(/{scope}/g, scope)
-    .replace(/{subject}/g, subject)
+    .replace(/{subject}/g, `${currentBranch} ${subject}`)
     // Only allow at most one whitespace.
     // When an optional field (ie. `scope`) is not specified, it can leave several consecutive
     // white spaces in the final message.
