@@ -7,11 +7,14 @@ const pad = require('pad')
 const path = require('path')
 const fuse = require('fuse.js')
 const util = require('util')
-const execSync = require('child_process').execSync;
+const execSync = require('child_process').execSync
 
 const types = require('./lib/types')
 
+
 const readFile = util.promisify(fs.readFile)
+
+const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).replace(/\r?\n/g, '')
 
 function loadConfig(filename) {
   return readFile(filename, 'utf8')
@@ -113,6 +116,16 @@ function createQuestions(config) {
       when: !config.skipQuestions.includes('scope')
     },
     {
+      type: 'maxlengh-input',
+      name: 'branchName',
+      message:
+        config.questions && config.questions.branchName
+            ? `${config.questions.branchName}: (${currentBranch})`
+            : `branch name: (${currentBranch})`,
+      maxLength: config.subjectMaxLength,
+      when: !config.skipQuestions.includes('branchName')
+    },
+    {
       type: 'maxlength-input',
       name: 'subject',
       message:
@@ -168,13 +181,14 @@ function formatCommitMessage(answers, config) {
   const type = config.types.find(type => type.code === emoji.emoji).name
   const scope = answers.scope ? '(' + answers.scope.trim() + ')' : ''
   const subject = answers.subject.trim()
-  const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' });
+  const branch = answers.branchName ? answers.branchName.trim() : currentBranch.trim()
+  const formatSubject = !config.skipQuestions.includes('branchName') ? `${branch} ${subject}` : subject
 
   const commitMessage = config.format
     .replace(/{emoji}/g, emoji.emoji)
     .replace(/{type}/g, type)
     .replace(/{scope}/g, scope)
-    .replace(/{subject}/g, `${currentBranch} ${subject}`)
+    .replace(/{subject}/g, formatSubject)
     // Only allow at most one whitespace.
     // When an optional field (ie. `scope`) is not specified, it can leave several consecutive
     // white spaces in the final message.
